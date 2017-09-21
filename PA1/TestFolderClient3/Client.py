@@ -18,8 +18,8 @@ class Client:
         except:
             print("Couldn't connect to " + str(ip))
 
-    def register(self, filename, sock):
-        sock.send(("register " + filename + " ").encode())
+    def register(self, filename, sock, port):
+        sock.send(("register " + filename + " " + str(port)).encode())
 
     def findAllFiles(self):
         files = []
@@ -53,7 +53,7 @@ class Client:
 class Server:
     def __init__(self):
         self.host = socket.gethostbyname(socket.gethostname())
-        self.port = 12345
+        self.port = 12343
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
@@ -113,17 +113,21 @@ if __name__ == "__main__":
             print(sock.recv(4096).decode())
             sock.shutdown(socket.SHUT_WR)
         elif userinput == 'register':
-            files = client.findAllFiles()
+            #files = client.findAllFiles()
+            filename = input("Filename ?\n").replace(" ", "")
             ip = input("Indexing server IP ?\n")
             port = input("Indexing server port ?\n")
             sock = client.socketConnect(ip, int(port))
-            for f in files:
-                client.register(f, sock)
-                print(sock.recv(4096).decode())
-                sock = client.socketConnect(ip, int(port))
+            client.register(filename, sock, server.port)
+            print(sock.recv(4096).decode())
+            # for f in files:
+            #     f.replace(" ", "")
+            #     client.register(f, sock, server.port)
+            #     print(sock.recv(4096).decode())
+            #     sock = client.socketConnect(ip, int(port))
             sock.shutdown(socket.SHUT_WR)
         elif userinput == 'lookup':
-            filename = input("Filename ?\n")
+            filename = input("Filename ?\n").replace(" ", "")
             ip = input("Indexing server IP ?\n")
             port = input("Indexing server port ?\n")
             sock = client.socketConnect(ip, int(port))

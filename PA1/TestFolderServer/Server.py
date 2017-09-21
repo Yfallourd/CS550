@@ -3,7 +3,7 @@ import socket
 import os
 import timeit
 import time
-from multiprocessing import Process, Lock, Queue
+from multiprocessing import Process, Lock, SimpleQueue
 
 
 
@@ -24,6 +24,7 @@ class Server:
         else:
             outdict[filename] = hostip
             out_q.put(outdict)
+            print("Si c'est ça j'te nique" +str(out_q.get()))
             return "File successfully added"
 
     def search(self, filename, out_q):
@@ -34,17 +35,19 @@ class Server:
             return "404"
 
     def threadedListening(self):
-        self.sock.listen(5)  # Limit to 5 concurrent connections
+        self.sock.listen()  # Limit to 5 concurrent connections
         print("Server socket listening on port "+str(self.port)+"...")
+        out_q = SimpleQueue()
         while 1:
-            out_q = Queue()
             client, ip = self.sock.accept()
             print("Connection received from " + str(client.getsockname()[0]))
             client.settimeout(120)  # Terminate after 2min of inactivity
             p = Process(target=self.Listen, args=(client, ip, out_q))
             p.start()
+            print(str(out_q.get()))
             self.files.update(out_q.get())
-            print(str(self.files))
+            p.join()
+            print("youpi")
 
 
     def Listen(self, client, ip, out_q):
@@ -57,10 +60,12 @@ class Server:
                 client.send(self.search(infos[1], out_q).encode())
                 print(str(self.files))
             elif infos[0] == "register":
-                client.send(self.register(infos[1], client.getsockname()[1], out_q).encode())
+                result = self.register(infos[1], infos[2], out_q)
+                client.send(result.encode())
                 print(str(self.files))
             else:
                 client.send("Unrecognized command".encode())
+                out_q.put({})
 
 
 if __name__ == "__main__":
