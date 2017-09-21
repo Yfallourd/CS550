@@ -1,6 +1,6 @@
 import socket
-import timeit
 import threading
+from multiprocessing import Process, Pool
 from collections import defaultdict
 
 class Server:
@@ -13,9 +13,23 @@ class Server:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
 
+    def fireSignals(self):
+        pool = Pool(4)
+        ports = [12347] #Change this according to how many concurrent clients you want
+        pool.map(self.signal, ports)
+        pool.close()
+        pool.join()
+
+    def signal(self, port):
+        #send test start signal to awaiting client
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if sock:
+            sock.connect(("127.0.1.1", port))
+            sock.shutdown(socket.SHUT_WR)
+
     def register(self, filename, hostip):
         if hostip in self.files[filename]:
-            return ""
+            return ""   #File was already added so nothing happens
         else:
             self.files[filename].append(hostip)
             return "File successfully added"
@@ -35,10 +49,10 @@ class Server:
 
     def threadedListening(self):
         self.sock.listen()  # Limit to 5 concurrent connections
-        print("Server socket listening on port "+str(self.port)+"...")
+        print("Server socket listening on port "+str(self.port)+"...\n")
         while 1:
-            client, ip = self.sock.accept()
-            print("Connection received from " + str(client.getsockname()[0]))
+            client, ip = self.sock.accept() #Program waits here for a call from a client
+            print("\nConnection received from " + str(client.getsockname()[0]))
             client.settimeout(120)  # Terminate after 2min of inactivity
             threading._start_new_thread(self.Listen, (client, ip))
 
@@ -51,13 +65,13 @@ class Server:
                 result = self.search(infos[1])
                 client.send(result.encode())
                 client.shutdown(socket.SHUT_WR)
-                print("Current file list :\n")
+                print("\nCurrent file list :")
                 print(str(self.files))
             elif infos[0] == "register":
                 result = self.register(infos[1], infos[2])
                 client.send(result.encode())
                 client.shutdown(socket.SHUT_WR)
-                print("Current file list :\n")
+                print("\nCurrent file list :")
                 print(str(self.files))
             else:
                 client.send("Unrecognized command".encode())
@@ -65,5 +79,12 @@ class Server:
 
 if __name__ == "__main__":
     server = Server()
-    print(server.host)
-    server.threadedListening()
+    print("Local IP is : " + server.host)
+    while 1:
+        result = input("\nInput START to boot the server or "
+                       "TEST to fire test signals to the clients\n")
+        if result == "START":
+            server.threadedListening()
+        elif result == "TEST":
+            server.fireSignals()
+            server.threadedListening()

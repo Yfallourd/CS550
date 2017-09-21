@@ -1,11 +1,10 @@
 import socket
 import threading
-import timeit
+import datetime
 import sys
-from multiprocessing import Process, Lock, Queue
+import time
+from multiprocessing import Process
 from os import walk, path
-
-import select
 
 
 class Client:
@@ -20,6 +19,18 @@ class Client:
         end = datetime.datetime.now()
         delta = end - start
         return (delta.total_seconds())/N
+
+    def testMulti(self, ip, port, N):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("127.0.1.1", 12348))
+        sock.listen()
+        print("\nClient ready and awaiting start signal from server\n")
+        client, clientip = sock.accept()
+        time.sleep(0.5)
+        print("Signal received, starting test\n")
+        result = self.testAverageReqTime("127.0.1.1", 12341, N)
+        print("\n[The average request took " + str(result) + " seconds]\n")
 
     def socketConnect(self, ip, port):
         try:
@@ -92,6 +103,7 @@ class Server:
             print("Connection received from "+str(client.getsockname()[0])+" "+str(client.getsockname()[1]))
             client.settimeout(120)  # Terminate after 2min of inactivity
             threading._start_new_thread(self.Listen, (client, ip, lock))
+
     def Listen(self, client, ip, lock):
         data = client.recv(4096).decode()
         infos = data.split(" ")
@@ -114,7 +126,7 @@ if __name__ == "__main__":
             " \"get\" to download a file.\n"
             " \"register\" to index one of your files\n"
             " \"lookup\" to query for a desired file location\n"
-            "\"test\" to enter the performance testing mode"
+            " \"test\" to enter the performance testing mode\n"
             " \"exit\" to quit the program\n"
             "or let the program run for the server to listen\n")
         if userinput == "get":
@@ -150,8 +162,13 @@ if __name__ == "__main__":
                 sys.exit()
         elif userinput == "test":
             N = input("How many requests ?\n")
-            print("Beginning of test :\n")
-            result = client.testAverageReqTime("127.0.1.1", "12341", int(N))
-            print("[The average request took " + str(result) + " seconds]")
+            response = input("Multithreading test ? (y/n)\n")
+            if response == "n":
+                print("Beginning of test :\n")
+                result = client.testAverageReqTime("127.0.1.1", 12341, int(N))
+                print("[The average request took " + str(result) + " seconds]")
+            if response == "y":
+                client.testMulti("127.0.1.1", 12341, int(N))
+
         else:
             print("Incorrect command.\n")
