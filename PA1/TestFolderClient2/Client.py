@@ -40,6 +40,8 @@ class Client:
         print(sock.recv(4096).decode())
 
     def getFile(self, filename, sock):
+        while os.path.isfile(filename):
+            filename += "_"
         f = open(filename, 'w')
         sock.send(("get " + str(filename)).encode())
         print("Receiving file data")
@@ -64,12 +66,10 @@ class Server:
         f = open(filename, 'r')
         fdata = f.read(4096)
         while (fdata):
-            print("Sending file data")
             sock.send(fdata.encode())
             fdata = f.read(4096)
         f.close()
         sock.shutdown(socket.SHUT_WR)
-        print(sock.recv(4096).decode())
 
     def threadedListening(self):
         self.sock.listen(5)  # Limit to 5 concurrent connections
@@ -96,6 +96,8 @@ if __name__ == "__main__":
     server = Server()
     client = Client()
     listenerProcess = Process(target=server.threadedListening).start()
+    indexip = input("Indexing server IP ?\n")
+    indexport = input("Indexing server port ?\n")
     while True:
         userinput = input(
             "Enter commmand:\n"
@@ -109,33 +111,31 @@ if __name__ == "__main__":
             ip = input("File host IP ?\n")
             port = input("File host port ?\n")
             sock = client.socketConnect(ip, int(port))
-            client.getFile(userinput, sock)
-            print(sock.recv(4096).decode())
-            sock.shutdown(socket.SHUT_WR)
+            if sock:
+                client.getFile(userinput, sock)
+                print(sock.recv(4096).decode())
+                sock.shutdown(socket.SHUT_WR)
         elif userinput == 'register':
             files = client.findAllFiles()
-            ip = input("Indexing server IP ?\n")
-            port = input("Indexing server port ?\n")
-            sock = client.socketConnect(ip, int(port))
-            for f in files:
-                f.replace(" ", "")
-                client.register(f, sock, server.port)
-                print(sock.recv(4096).decode())
-                sock = client.socketConnect(ip, int(port))
-            sock.shutdown(socket.SHUT_WR)
+            sock = client.socketConnect(indexip, int(indexport))
+            if sock:
+                for f in files:
+                    f.replace(" ", "")
+                    client.register(f, sock, server.port)
+                    print(sock.recv(4096).decode())
+                    sock = client.socketConnect(indexip, int(indexport))
+                sock.shutdown(socket.SHUT_WR)
         elif userinput == 'lookup':
             filename = input("Filename ?\n").replace(" ", "")
-            ip = input("Indexing server IP ?\n")
-            port = input("Indexing server port ?\n")
-            sock = client.socketConnect(ip, int(port))
-            client.lookup(filename, sock)
-            print(sock.recv(4096).decode())
-            sock.shutdown(socket.SHUT_WR)
+            sock = client.socketConnect(indexip, int(indexport))
+            if sock:
+                client.lookup(filename, sock)
+                print(sock.recv(4096).decode())
+                sock.shutdown(socket.SHUT_WR)
         elif userinput == "exit":
             print("warning, this will also terminate the server process\n")
             input = input("Are you sure ? (y/n)\n")
             if input == "y":
-                listenerProcess.join()
                 sys.exit()
         else:
             print("Incorrect command.\n")

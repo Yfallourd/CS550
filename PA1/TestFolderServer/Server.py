@@ -37,7 +37,6 @@ class Server:
             print("Connection received from " + str(client.getsockname()[0]))
             client.settimeout(120)  # Terminate after 2min of inactivity
             threading._start_new_thread(self.Listen, (client, ip))
-            print("youpi")
 
 
     def Listen(self, client, ip):
@@ -48,11 +47,13 @@ class Server:
                 result = self.search(infos[1])
                 client.send(result.encode())
                 client.shutdown(socket.SHUT_WR)
+                print("Current file list :\n")
                 print(str(self.files))
             elif infos[0] == "register":
                 result = self.register(infos[1], infos[2])
                 client.send(result.encode())
                 client.shutdown(socket.SHUT_WR)
+                print("Current file list :\n")
                 print(str(self.files))
             else:
                 client.send("Unrecognized command".encode())
