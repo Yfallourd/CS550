@@ -12,6 +12,15 @@ class Client:
     def __init__(self):
         print("Client initialized")
 
+    def testAverageReqTime(self, ip, port, N):
+        start = datetime.datetime.now()
+        for i in range(N):
+            sock = self.socketConnect(ip, int(port))
+            self.lookup("test", sock, 12343)
+        end = datetime.datetime.now()
+        delta = end - start
+        return (delta.total_seconds())/N
+
     def socketConnect(self, ip, port):
         try:
             so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -105,6 +114,7 @@ if __name__ == "__main__":
             " \"get\" to download a file.\n"
             " \"register\" to index one of your files\n"
             " \"lookup\" to query for a desired file location\n"
+            "\"test\" to enter the performance testing mode"
             " \"exit\" to quit the program\n"
             "or let the program run for the server to listen\n")
         if userinput == "get":
@@ -138,5 +148,10 @@ if __name__ == "__main__":
             input = input("Are you sure ? (y/n)\n")
             if input == "y":
                 sys.exit()
+        elif userinput == "test":
+            N = input("How many requests ?\n")
+            print("Beginning of test :\n")
+            result = client.testAverageReqTime("127.0.1.1", "12341", int(N))
+            print("[The average request took " + str(result) + " seconds]")
         else:
             print("Incorrect command.\n")
