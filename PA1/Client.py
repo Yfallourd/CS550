@@ -1,7 +1,7 @@
 import socket
 import timeit
 import sys
-from multiprocessing import Process
+from multiprocessing import Process, Lock
 
 
 class Client:
@@ -17,27 +17,25 @@ class Client:
         except:
             print("Couldn't connect to " + str(ip))
 
-
     def register(self, filename, sock):
-        sock.send("register "+ filename)
+        sock.send(("register " + filename).encode())
 
     def lookup(self, filename, sock):
-        sock.send("lookup " + filename)
-        data = sock.recv(4096)
-        # todo
+        sock.send(("lookup " + filename).encode())
+        print(sock.recv(4096).decode())
 
     def getFile(self, filename, sock):
         f = open(filename, 'wb')
-        sock.send("get " + str(filename))
+        sock.send(("get " + str(filename)).encode())
         print("Receiving file data")
-        fdata = sock.recv(4096)
+        fdata = sock.recv(4096).decode()
         while (fdata):
             print("Receiving file data")
             f.write(fdata)
-            fdata = sock.recv(4096)
+            fdata = sock.recv(4096).decode()
         f.close()
         sock.shutdown(socket.SHUT_WR)
-        print(sock.recv(4096))
+        print(sock.recv(4096).decode())
 
 
 class Server:
@@ -53,64 +51,77 @@ class Server:
         fdata = f.read(4096)
         while (fdata):
             print("Sending file data")
-            sock.send(fdata)
+            sock.send(fdata.encode())
             fdata = f.read(4096)
         f.close()
         sock.shutdown(socket.SHUT_WR)
-        print(sock.recv(4096))
+        print(sock.recv(4096).decode())
 
     def threadedListening(self):
         self.sock.listen(5)  # Limit to 5 concurrent connections
-        print("Server socket listening..._")
+        lock = Lock()
+        lock.acquire()
+        print("\n[LISTENING PROCESS]\nServer socket listening...")
+        lock.release()
         while 1:
             client, ip = self.sock.accept()
+            print("Connection received from "+str(client.getsockname()[0])+" "+str(client.getsockname()[1]))
             client.settimeout(120)  # Terminate after 2min of inactivity
-            p = Process(target=self.Listen, args=(client, ip)).start()
+            p = Process(target=self.Listen, args=(client, ip, lock)).start()
             p.join()
 
-    def Listen(self, client, ip):
-        try:
-            data = client.recv(4096)
-            infos = data.split()
-            if infos[0] == "get":
-                self.giveFile(infos[1], client)
-        except:
-            print("woops lol")
+    def Listen(self, client, ip, lock):
+        data = client.recv(4096).decode()
+        infos = data.split(" ")
+        if infos[0] == "get":
+            lock.acquire()
+            self.giveFile(infos[1], client)
+            lock.release()
 
 
 if __name__ == "__main__":
 
     server = Server()
     client = Client()
-
+    listenerProcess = Process(target=server.threadedListening).start()
     while True:
         userinput = input(
             "Enter commmand:\n"
             " \"get\" to download a file.\n"
             " \"register\" to index one of your files\n"
             " \"lookup\" to query for a desired file location\n"
-            " \"exit\" to quit the program\n")
+            " \"exit\" to quit the program\n"
+            "or let the program run for the server to listen\n")
         if userinput == "get":
             userinput = input("Filename ?\n")
             ip = input("File host IP ?\n")
             port = input("File host port ?\n")
-            sock = client.socketConnect(ip, port)
+            sock = client.socketConnect(ip, int(port))
             client.getFile(userinput, sock)
-            print("Issued GET request.\n")
+            print(sock.recv(4096).decode())
+            sock.shutdown(socket.SHUT_WR)
         elif userinput == 'register':
+            print(str(type(userinput)))
             filename = input("Filename ?\n")
             ip = input("Indexing server IP ?\n")
             port = input("Indexing server port ?\n")
-            sock = client.socketConnect(ip, port)
+            sock = client.socketConnect(ip, int(port))
             client.register(filename, sock)
-            print("Issued PUT request.\n")
+            print(sock.recv(4096).decode())
+            sock.shutdown(socket.SHUT_WR)
         elif userinput == 'lookup':
             filename = input("Filename ?\n")
             ip = input("Indexing server IP ?\n")
             port = input("Indexing server port ?\n")
-            sock = client.socketConnect(ip, port)
+            sock = client.socketConnect(ip, int(port))
             client.lookup(filename, sock)
+            print(sock.recv(4096).decode())
+            sock.shutdown(socket.SHUT_WR)
         elif userinput == 'exit':
-            sys.exit()
+            print("warning, this will also terminate the server process\n")
+            input = input("Are you sure ? (y/n)\n")
+            if input == "y":
+                listenerProcess.join()
+                sys.exit()
         else:
             print("Incorrect command.\n")
