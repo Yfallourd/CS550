@@ -1,7 +1,8 @@
 import socket
 import timeit
 import sys
-from multiprocessing import Process, Lock
+from multiprocessing import Process, Lock, Queue
+from os import walk
 
 
 class Client:
@@ -18,7 +19,18 @@ class Client:
             print("Couldn't connect to " + str(ip))
 
     def register(self, filename, sock):
-        sock.send(("register " + filename).encode())
+        sock.send(("register " + filename + " ").encode())
+
+    def findAllFiles(self):
+        files = []
+        for (dirpath, dirnames, filenames) in walk("."): #parse all directories and files
+            files.extend(filenames)
+            break   #break after one iteration to remain at the same level
+        if "Client.py" in files:
+            files.remove("Client.py")
+        if "Server.py" in files:
+            files.remove("Server.py")
+        return files
 
     def lookup(self, filename, sock):
         sock.send(("lookup " + filename).encode())
@@ -51,7 +63,7 @@ class Server:
         fdata = f.read(4096)
         while (fdata):
             print("Sending file data")
-            sock.send(fdata.encode())
+            sock.send(fdata)
             fdata = f.read(4096)
         f.close()
         sock.shutdown(socket.SHUT_WR)
@@ -101,13 +113,14 @@ if __name__ == "__main__":
             print(sock.recv(4096).decode())
             sock.shutdown(socket.SHUT_WR)
         elif userinput == 'register':
-            print(str(type(userinput)))
-            filename = input("Filename ?\n")
+            files = client.findAllFiles()
             ip = input("Indexing server IP ?\n")
             port = input("Indexing server port ?\n")
             sock = client.socketConnect(ip, int(port))
-            client.register(filename, sock)
-            print(sock.recv(4096).decode())
+            for f in files:
+                client.register(f, sock)
+                print(sock.recv(4096).decode())
+                sock = client.socketConnect(ip, int(port))
             sock.shutdown(socket.SHUT_WR)
         elif userinput == 'lookup':
             filename = input("Filename ?\n")
@@ -117,7 +130,7 @@ if __name__ == "__main__":
             client.lookup(filename, sock)
             print(sock.recv(4096).decode())
             sock.shutdown(socket.SHUT_WR)
-        elif userinput == 'exit':
+        elif userinput == "exit":
             print("warning, this will also terminate the server process\n")
             input = input("Are you sure ? (y/n)\n")
             if input == "y":
