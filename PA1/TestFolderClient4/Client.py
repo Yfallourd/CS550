@@ -1,8 +1,11 @@
 import socket
+import threading
 import timeit
 import sys
 from multiprocessing import Process, Lock, Queue
 from os import walk
+
+import select
 
 
 class Client:
@@ -37,7 +40,7 @@ class Client:
         print(sock.recv(4096).decode())
 
     def getFile(self, filename, sock):
-        f = open(filename, 'wb')
+        f = open(filename, 'w')
         sock.send(("get " + str(filename)).encode())
         print("Receiving file data")
         fdata = sock.recv(4096).decode()
@@ -46,7 +49,6 @@ class Client:
             f.write(fdata)
             fdata = sock.recv(4096).decode()
         f.close()
-        sock.shutdown(socket.SHUT_WR)
         print(sock.recv(4096).decode())
 
 
@@ -59,7 +61,7 @@ class Server:
         self.sock.bind((self.host, self.port))
 
     def giveFile(self, filename, sock):
-        f = open(filename, 'rb')
+        f = open(filename, 'r')
         fdata = f.read(4096)
         while (fdata):
             print("Sending file data")
@@ -71,7 +73,7 @@ class Server:
 
     def threadedListening(self):
         self.sock.listen(5)  # Limit to 5 concurrent connections
-        lock = Lock()
+        lock = threading.Lock()
         lock.acquire()
         print("\n[LISTENING PROCESS]\nServer socket listening...")
         lock.release()
@@ -79,9 +81,7 @@ class Server:
             client, ip = self.sock.accept()
             print("Connection received from "+str(client.getsockname()[0])+" "+str(client.getsockname()[1]))
             client.settimeout(120)  # Terminate after 2min of inactivity
-            p = Process(target=self.Listen, args=(client, ip, lock)).start()
-            p.join()
-
+            threading._start_new_thread(self.Listen, (client, ip, lock))
     def Listen(self, client, ip, lock):
         data = client.recv(4096).decode()
         infos = data.split(" ")

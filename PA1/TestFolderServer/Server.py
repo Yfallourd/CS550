@@ -2,10 +2,9 @@ import sys
 import socket
 import os
 import timeit
+import threading
 import time
 from multiprocessing import Process, Lock, SimpleQueue
-
-
 
 class Server:
 
@@ -17,55 +16,46 @@ class Server:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
 
-    def register(self, filename, hostip, out_q):
-        outdict = {}
+    def register(self, filename, hostip):
         if filename in self.files:
             return "A file with this name already exists"
         else:
-            outdict[filename] = hostip
-            out_q.put(outdict)
-            print("Si c'est ça j'te nique" +str(out_q.get()))
+            self.files[filename] = hostip
             return "File successfully added"
 
-    def search(self, filename, out_q):
-        print(str(self.files))
+    def search(self, filename):
         if filename in self.files:
-            return str(self.files[filename])
+            return "127.0.1.1 on port " + str(self.files[filename]) + " has this file"
         else:
-            return "404"
+            return "404 - No peer has registered this file"
 
     def threadedListening(self):
         self.sock.listen()  # Limit to 5 concurrent connections
         print("Server socket listening on port "+str(self.port)+"...")
-        out_q = SimpleQueue()
         while 1:
             client, ip = self.sock.accept()
             print("Connection received from " + str(client.getsockname()[0]))
             client.settimeout(120)  # Terminate after 2min of inactivity
-            p = Process(target=self.Listen, args=(client, ip, out_q))
-            p.start()
-            print(str(out_q.get()))
-            self.files.update(out_q.get())
-            p.join()
+            threading._start_new_thread(self.Listen, (client, ip))
             print("youpi")
 
 
-    def Listen(self, client, ip, out_q):
-        print("Listen : "+str(self.files))
-        print(str(os.getpid())+" is currently in the Listen method")
+    def Listen(self, client, ip):
         data = client.recv(4096).decode()
         if data:
             infos = data.split(" ")
             if infos[0] == "lookup":
-                client.send(self.search(infos[1], out_q).encode())
+                result = self.search(infos[1])
+                client.send(result.encode())
+                client.shutdown(socket.SHUT_WR)
                 print(str(self.files))
             elif infos[0] == "register":
-                result = self.register(infos[1], infos[2], out_q)
+                result = self.register(infos[1], infos[2])
                 client.send(result.encode())
+                client.shutdown(socket.SHUT_WR)
                 print(str(self.files))
             else:
                 client.send("Unrecognized command".encode())
-                out_q.put({})
 
 
 if __name__ == "__main__":
