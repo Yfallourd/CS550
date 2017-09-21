@@ -1,15 +1,12 @@
-import sys
 import socket
-import os
 import timeit
 import threading
-import time
-from multiprocessing import Process, Lock, SimpleQueue
+from collections import defaultdict
 
 class Server:
 
     def __init__(self):
-        self.files = {}
+        self.files = defaultdict(list)  #Data structure : dictionnary of lists
         self.host = socket.gethostbyname(socket.gethostname())
         self.port = 12341
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -17,15 +14,20 @@ class Server:
         self.sock.bind((self.host, self.port))
 
     def register(self, filename, hostip):
-        if filename in self.files:
-            return "A file with this name already exists"
+        if hostip in self.files[filename]:
+            return ""
         else:
-            self.files[filename] = hostip
+            self.files[filename].append(hostip)
             return "File successfully added"
 
     def search(self, filename):
         if filename in self.files:
-            return "127.0.1.1 on port " + str(self.files[filename]) + " has this file"
+            '''
+            IMPORTANT : Here we give the first peer in the list because it's much simpler.
+                        In the future, this is where we should take into consideration which
+                        peer is the best for the client (looking at speed for example).
+            '''
+            return "127.0.1.1 on port " + str(self.files[filename][0]) + " has this file"
         else:
             return "404 - No peer has registered this file"
 

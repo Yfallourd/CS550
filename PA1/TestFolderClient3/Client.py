@@ -3,7 +3,7 @@ import threading
 import timeit
 import sys
 from multiprocessing import Process, Lock, Queue
-from os import walk
+from os import walk, path
 
 import select
 
@@ -16,7 +16,7 @@ class Client:
         try:
             so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             so.connect((ip, port))
-            print("Connected to " + str(ip) + " on port " + str(port))
+            print("Connected to " + str(ip) + " on port " + str(port) + "\n")
             return so
         except:
             print("This peer isn't connected at the moment")
@@ -40,9 +40,10 @@ class Client:
         print(sock.recv(4096).decode())
 
     def getFile(self, filename, sock):
-        while os.path.isfile(filename):
-            filename += "_"
-        f = open(filename, 'w')
+        tempfilename = filename
+        while path.isfile(filename):
+            tempfilename += "_"
+        f = open(tempfilename, 'w')
         sock.send(("get " + str(filename)).encode())
         print("Receiving file data")
         fdata = sock.recv(4096).decode()
