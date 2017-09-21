@@ -22,12 +22,14 @@ class Server:
 
     def search(self, filename):
         if filename in self.files:
-            '''
-            IMPORTANT : Here we give the first peer in the list because it's much simpler.
-                        In the future, this is where we should take into consideration which
-                        peer is the best for the client (looking at speed for example).
-            '''
-            return "127.0.1.1 on port " + str(self.files[filename][0]) + " has this file"
+            portstring = ""
+            for each in self.files[filename]:
+                portstring += str(each) + " "
+            if len(self.files[filename]) == 1:
+                return "Client on port " + portstring.strip() + " has this file"
+            else:
+
+                return "Clients on ports " + portstring.strip() + " have this file"
         else:
             return "404 - No peer has registered this file"
 

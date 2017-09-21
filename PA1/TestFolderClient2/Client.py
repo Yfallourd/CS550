@@ -35,13 +35,13 @@ class Client:
             files.remove("Server.py")
         return files
 
-    def lookup(self, filename, sock):
-        sock.send(("lookup " + filename).encode())
+    def lookup(self, filename, sock, port):
+        sock.send(("lookup " + filename + " " + str(port)).encode())
         print(sock.recv(4096).decode())
 
     def getFile(self, filename, sock):
         tempfilename = filename
-        while path.isfile(filename):
+        while path.isfile(tempfilename):
             tempfilename += "_"
         f = open(tempfilename, 'w')
         sock.send(("get " + str(filename)).encode())
@@ -130,7 +130,7 @@ if __name__ == "__main__":
             filename = input("Filename ?\n").replace(" ", "")
             sock = client.socketConnect(indexip, int(indexport))
             if sock:
-                client.lookup(filename, sock)
+                client.lookup(filename, sock, server.port)
                 print(sock.recv(4096).decode())
                 sock.shutdown(socket.SHUT_WR)
         elif userinput == "exit":
