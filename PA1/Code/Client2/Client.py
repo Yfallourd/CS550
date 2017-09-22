@@ -97,7 +97,7 @@ class Server:
         self.sock.listen(5)  # Limit to 5 concurrent connections
         lock = threading.Lock()
         lock.acquire()
-        print("\n[LISTENING PROCESS]\nServer socket listening...")
+        print("\n[LISTENING PROCESS]\nServer socket listening...\n")
         lock.release()
         while 1:
             client, ip = self.sock.accept()

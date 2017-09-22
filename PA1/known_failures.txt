@@ -1,0 +1,22 @@
+Known cases where my program misbehaves :
+
+
+
+I didn't take time to sanitize inputs, meaning that if you put "Number of requests : cat" it will crash
+
+
+As the performance study indicates, multithreading seems to optimize weirdly. I assume this is because of the way I test but I do not know enough about Python's Map/Pool methods to understand why. This could also be due to my virtual machine Ubuntu image running random processes in the background during testing, which could affect performance, and would explain why, despite clients being the same and running on the same machine, I would get different results for the simple threaded tests.
+
+
+It is possible to download a file from your own computer, which I guess is intended but makes little sense in a real life usage. I didn't bother to account for this case as everything works fine using the same node as client and server.
+
+
+For some reason, using the "exit" command when launching the program from the command line does not exit. I assume this is because the process doesn't have the necessary permissions to use a sys call. Use a KeyboardInterrupt() with Ctrl+C to exit.
+
+
+
+I am sure there are other cases but I didn't test extensively, these are the only misbehavings I have noticed.
+
+
+NOTE : This program has been written to be tested on one machine, with each file in a different directory with files at the top level. As such, it assumes that IP is always 127.0.1.1 !
+If you want to place each file on a different server, there are modifications to be made as it currently focuses on different ports (hard coded) instead of different IP addresses !

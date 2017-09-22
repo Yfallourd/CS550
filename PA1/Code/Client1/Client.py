@@ -23,7 +23,7 @@ class Client:
     def testMulti(self, ip, port, N):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("127.0.1.1", 12349))
+        sock.bind(("127.0.1.1", 12348))
         sock.listen()
         print("\nClient ready and awaiting start signal from server\n")
         client, clientip = sock.accept()
@@ -39,7 +39,7 @@ class Client:
             print("Connected to " + str(ip) + " on port " + str(port) + "\n")
             return so
         except:
-            print("This peer isn't connected at the moment")
+            print("Couldn't connect to " + str(ip))
 
     def register(self, filename, sock, port):
         sock.send(("register " + filename + " " + str(port)).encode())
@@ -79,7 +79,7 @@ class Client:
 class Server:
     def __init__(self):
         self.host = socket.gethostbyname(socket.gethostname())
-        self.port = 12343
+        self.port = 12345
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
@@ -97,7 +97,7 @@ class Server:
         self.sock.listen(5)  # Limit to 5 concurrent connections
         lock = threading.Lock()
         lock.acquire()
-        print("\n[LISTENING PROCESS]\nServer socket listening...")
+        print("\n[LISTENING PROCESS]\nServer socket listening...\n")
         lock.release()
         while 1:
             client, ip = self.sock.accept()

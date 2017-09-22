@@ -32,7 +32,7 @@ class Server:
             return ""   #File was already added so nothing happens
         else:
             self.files[filename].append(hostip)
-            return "File successfully added"
+            return filename + " successfully added"
 
     def search(self, filename):
         if filename in self.files:

@@ -1,0 +1,96 @@
+Output file of a peer :
+
+Client initialized
+Indexing server IP ?
+
+[LISTENING PROCESS]
+Server socket listening...
+
+127.0.1.1
+Indexing server port ?
+12341
+Enter commmand:
+ "get" to download a file.
+ "register" to index one of your files
+ "lookup" to query for a desired file location
+ "test" to enter the performance testing mode
+ "exit" to quit the program
+or let the program run for the server to listen
+register
+Connected to 127.0.1.1 on port 12341
+
+c2-3 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-5 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-1 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-9 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-6 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-10 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-4 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-7 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-8 successfully added
+Connected to 127.0.1.1 on port 12341
+
+c2-2 successfully added
+Connected to 127.0.1.1 on port 12341
+
+Enter commmand:
+ "get" to download a file.
+ "register" to index one of your files
+ "lookup" to query for a desired file location
+ "test" to enter the performance testing mode
+ "exit" to quit the program
+or let the program run for the server to listen
+lookup
+Filename ?
+c4-2
+Connected to 127.0.1.1 on port 12341
+
+Client on port 12344 has this file
+
+Enter commmand:
+ "get" to download a file.
+ "register" to index one of your files
+ "lookup" to query for a desired file location
+ "test" to enter the performance testing mode
+ "exit" to quit the program
+or let the program run for the server to listen
+get
+Filename ?
+c4-2
+File host IP ?
+127.0.1.1
+File host port ?
+12344
+Connected to 127.0.1.1 on port 12344
+
+Receiving file data
+Receiving file data
+
+Display file 'c4-2'
+
+
+
+Enter commmand:
+ "get" to download a file.
+ "register" to index one of your files
+ "lookup" to query for a desired file location
+ "test" to enter the performance testing mode
+ "exit" to quit the program
+or let the program run for the server to listen
+

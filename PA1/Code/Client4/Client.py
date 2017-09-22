@@ -1,8 +1,8 @@
 import socket
 import threading
 import datetime
-import sys
 import time
+import sys
 from multiprocessing import Process
 from os import walk, path
 
@@ -14,7 +14,7 @@ class Client:
     def testAverageReqTime(self, ip, port, N):
         start = datetime.datetime.now()
         for i in range(N):
-            sock = self.socketConnect(ip, int(port))
+            sock = self.socketConnect(ip, port)
             self.lookup("test", sock, 12343)
         end = datetime.datetime.now()
         delta = end - start
@@ -23,7 +23,7 @@ class Client:
     def testMulti(self, ip, port, N):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("127.0.1.1", 12348))
+        sock.bind(("127.0.1.1", 12346))
         sock.listen()
         print("\nClient ready and awaiting start signal from server\n")
         client, clientip = sock.accept()
@@ -79,7 +79,7 @@ class Client:
 class Server:
     def __init__(self):
         self.host = socket.gethostbyname(socket.gethostname())
-        self.port = 12345
+        self.port = 12344
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
@@ -97,7 +97,7 @@ class Server:
         self.sock.listen(5)  # Limit to 5 concurrent connections
         lock = threading.Lock()
         lock.acquire()
-        print("\n[LISTENING PROCESS]\nServer socket listening...")
+        print("\n[LISTENING PROCESS]\nServer socket listening...\n")
         lock.release()
         while 1:
             client, ip = self.sock.accept()
