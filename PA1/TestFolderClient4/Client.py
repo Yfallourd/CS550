@@ -72,6 +72,7 @@ class Client:
             f.write(fdata)
             fdata = sock.recv(4096).decode()
         f.close()
+        print("\nDisplay file \'" + filename + "\'\n")
         print(sock.recv(4096).decode())
 
 
