@@ -15,7 +15,8 @@ class Server:
 
     def fireSignals(self):
         pool = Pool(4)
-        ports = [12347] #Change this according to how many concurrent clients you want
+        ports = [12346]
+        #ports = [12346, 12347, 12348, 12349] #Change this according to how many concurrent clients you want
         pool.map(self.signal, ports)
         pool.close()
         pool.join()
