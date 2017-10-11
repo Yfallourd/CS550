@@ -161,9 +161,6 @@ class Server:
 
 
 if __name__ == "__main__":
-    for filename in listdir("."):
-        if "_" in filename:
-            remove(filename)
     cfg = open("../../Indexcfg", "r")
     servers = cfg.read().strip().split("|")
     cfg.close()
