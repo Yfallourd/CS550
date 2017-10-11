@@ -4,7 +4,7 @@ import datetime
 import sys
 import time
 from multiprocessing import Process
-from os import walk, path, rename, listdir
+from os import walk, path, listdir, remove
 import random
 
 
@@ -12,26 +12,43 @@ class Client:
     def __init__(self):
         print("Client initialized")
 
-    def testAverageReqTime(self, ip, port, N):
+    def testAverageReqTime(self, servers, N, test, port):
         start = datetime.datetime.now()
-        for i in range(N):
-            sock = self.socketConnect(ip, int(port))
-            self.lookup("test", sock, 12343)
-        end = datetime.datetime.now()
-        delta = end - start
-        return (delta.total_seconds())/N
+        end = start
+        if test == "lookup":
+            for i in range(N):  # lookup different filenames, some being found and others not
+                filename = "c"+str(i % 8)+"-1"
+                self.decentralizedLookup(filename, servers)
+            end = datetime.datetime.now()
+        elif test == "register":
+            for i in range(N):  # register all the files multiple time
+                self.registerAllFiles(servers, port)
+            end = datetime.datetime.now()
+        elif test == "get":
+            for i in range(N):  # get a random file from a random peer, repeated N times
+                target = random.choice([12341,12342,12343,12344,12345,12346,12347,12348])
+                filename = "c"+list(str(target))[4]+"-"+random.choice(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
+                sock = client.socketConnect("127.0.1.1", target)
+                if sock:
+                    self.getFile(filename, sock)
+                    sock.shutdown(socket.SHUT_WR)
 
-    def testMulti(self, ip, port, N):
+            end = datetime.datetime.now()
+        delta = end - start
+        return [(delta.total_seconds())/N, (N/delta.total_seconds())]
+
+    def testMulti(self, servers, N, test, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("127.0.1.1", 12301))  # Defines peer's port for test
+        sock.bind(("127.0.1.1", 12306))  # Defines peer's port for test
         sock.listen()
         print("\nClient ready and awaiting start signal from server\n")
         client, clientip = sock.accept()
         time.sleep(0.5)
         print("Signal received, starting test\n")
-        result = self.testAverageReqTime("127.0.1.1", 12341, N)
-        print("\n[The average request took " + str(result) + " seconds]\n")
+        result = self.testAverageReqTime(servers, N, test, port)
+        print("\n[The average request took " + str(result[0]) + " seconds]\n")
+        print("\n[The throughput is  " + str(result[1]) + " operations per second]\n")
 
     def selectServer(self, servers):
         #This is where we'd normally select based on performance
@@ -41,10 +58,21 @@ class Client:
         try:
             so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             so.connect((ip, port))
-            print("Connected to " + str(ip) + " on port " + str(port) + "\n")
             return so
         except:
             print("Couldn't connect to " + str(ip))
+
+    def registerAllFiles(self, servers, port):
+        files = client.findAllFiles()
+        indexport = client.selectServer(servers)  # Connect to a random indexing server
+        sock = client.socketConnect(indexip, int(indexport))
+        if sock:
+            for f in files:
+                f.replace(" ", "")
+                client.register(f, sock, port)
+                print(sock.recv(4096).decode())
+                sock = client.socketConnect(indexip, int(indexport))  # Reset the socket
+            sock.shutdown(socket.SHUT_WR)
 
     def register(self, filename, sock, port):
         sock.send(("register " + filename + " " + str(port)).encode())
@@ -63,12 +91,25 @@ class Client:
     def lookup(self, filename, sock, port):
         sock.send(("lookup " + filename + " " + str(port)).encode())
         return sock.recv(4096).decode()
-        #print(sock.recv(4096).decode())
+
+    def decentralizedLookup(self, filename, servers):
+        result = ""
+        for indexport in servers:
+            sock = client.socketConnect(indexip, int(indexport))
+            if sock:
+                result = client.lookup(filename, sock, server.port)
+                sock.shutdown(socket.SHUT_WR)
+                if "404 - No peer has registered this file" not in result:  # keeps the decentralization transparent by
+                                                                            # only showing one result message
+                    print(result)
+                    break
+        if "404 - No peer has registered this file" in result:
+            print(result)
 
     def getFile(self, filename, sock):
         tempfilename = filename
         while path.isfile(tempfilename):
-            tempfilename += "_"
+            tempfilename += "_"  # Avoiding files with the same name
         f = open(tempfilename, 'w')
         sock.send(("get " + str(filename)).encode())
         print("Receiving file data")
@@ -78,14 +119,14 @@ class Client:
             f.write(fdata)
             fdata = sock.recv(4096).decode()
         f.close()
-        print("\nDisplay file \'" + filename + "\'\n")
+        print("\nDisplay file \'" + filename + "\'\n")  # print to stdout instead of opening
         print(sock.recv(4096).decode())
 
 
 class Server:
     def __init__(self):
         self.host = socket.gethostbyname(socket.gethostname())
-        self.port = 12346
+        self.port = 12346  # This port is how a client will connect
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
@@ -107,7 +148,6 @@ class Server:
         lock.release()
         while 1:
             client, ip = self.sock.accept()
-            print("Connection received from "+str(client.getsockname()[0])+" "+str(client.getsockname()[1]))
             client.settimeout(120)  # Terminate after 2min of inactivity
             threading._start_new_thread(self.Listen, (client, ip, lock))
 
@@ -121,14 +161,16 @@ class Server:
 
 
 if __name__ == "__main__":
+    for filename in listdir("."):
+        if "_" in filename:
+            remove(filename)
     cfg = open("../../Indexcfg", "r")
     servers = cfg.read().strip().split("|")
     cfg.close()
     server = Server()
     client = Client()
     listenerProcess = Process(target=server.threadedListening).start()
-    indexip = "127.0.1.1"
-    # indexport = input("Indexing server port ?\n")
+    indexip = "127.0.1.1"  # Hardcoded for simplicity but in a multi-node setting, this will change
     while True:
         userinput = input(
             "Enter commmand:\n"
@@ -140,7 +182,6 @@ if __name__ == "__main__":
             "or let the program run for the server to listen\n")
         if userinput == "get":
             userinput = input("Filename ?\n")
-            # ip = input("File host IP ?\n")
             ip = "127.0.1.1"
             port = input("File host port ?\n")
             sock = client.socketConnect(ip, int(port))
@@ -149,30 +190,10 @@ if __name__ == "__main__":
                 print(sock.recv(4096).decode())
                 sock.shutdown(socket.SHUT_WR)
         elif userinput == 'register':
-            files = client.findAllFiles()
-            indexport = client.selectServer(servers)
-            sock = client.socketConnect(indexip, int(indexport))
-            if sock:
-                for f in files:
-                    f.replace(" ", "")
-                    client.register(f, sock, server.port)
-                    print(sock.recv(4096).decode())
-                    sock = client.socketConnect(indexip, int(indexport))
-                sock.shutdown(socket.SHUT_WR)
+            client.registerAllFiles(servers, server.port)
         elif userinput == 'lookup':
             filename = input("Filename ?\n").replace(" ", "")
-            result = ""
-            for indexport in servers:
-                sock = client.socketConnect(indexip, int(indexport))
-                if sock:
-                    result = client.lookup(filename, sock, server.port)
-                    # print(sock.recv(4096).decode())
-                    sock.shutdown(socket.SHUT_WR)
-                    if "404 - No peer has registered this file" not in result:  # keeps the decentralization transparent by only showing one result message
-                        print(result)
-                        break
-            if "404 - No peer has registered this file" in result:
-                print(result)
+            client.decentralizedLookup(filename, servers)
         elif userinput == "exit":
             print("warning, this will also terminate the server process\n")
             input = input("Are you sure ? (y/n)\n")
@@ -182,11 +203,15 @@ if __name__ == "__main__":
             N = input("How many requests ?\n")
             response = input("Multithreading test ? (y/n)\n")
             if response == "n":
-                print("Beginning of test :\n")
-                result = client.testAverageReqTime("127.0.1.1", 12001, int(N))
-                print("[The average request took " + str(result) + " seconds]")
+                userinput = input("Test which command ? lookup/register/get\n")
+                if (userinput == "lookup")|(userinput == "get")|(userinput == "register"):
+                    print("Beginning of test :\n")
+                    result = client.testAverageReqTime(servers, int(N), userinput, server.port)
+                    print("[The average request took " + str(result) + " seconds]")
             if response == "y":
-                client.testMulti("127.0.1.1", 12001, int(N))  # Gotta change that shit
+                userinput = input("Test which command ? lookup/register/get\n")
+                if (userinput == "lookup")|(userinput == "get")|(userinput == "register"):
+                    client.testMulti(servers, int(N), userinput, server.port)
 
         else:
             print("Incorrect command.\n")

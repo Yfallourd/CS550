@@ -53,7 +53,7 @@ class Server:
         print("Server socket listening on port "+str(self.port)+"...\n")
         while 1:
             client, ip = self.sock.accept() #Program waits here for a call from a client
-            print("\nConnection received from " + str(client.getsockname()[0]))
+
             client.settimeout(120)  # Terminate after 2min of inactivity
             threading._start_new_thread(self.Listen, (client, ip))
 

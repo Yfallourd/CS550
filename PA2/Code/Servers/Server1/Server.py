@@ -15,8 +15,10 @@ class Server:
 
     def fireSignals(self):
         pool = Pool(4)
-        ports = [12301]
-        #ports = [12346, 12347, 12348, 12349] #Change this according to how many concurrent clients you want
+        #ports = [12301]
+        ports = [12301, 12302]
+        # ports = [12301, 12302, 12303, 12304] #Change this according to how many concurrent clients you want
+        # ports = [12301, 12302, 12303, 12304, 12305, 12306, 12307, 12308]
         pool.map(self.signal, ports)
         pool.close()
         pool.join()
@@ -53,7 +55,7 @@ class Server:
         print("Server socket listening on port "+str(self.port)+"...\n")
         while 1:
             client, ip = self.sock.accept() #Program waits here for a call from a client
-            print("\nConnection received from " + str(client.getsockname()[0]))
+
             client.settimeout(120)  # Terminate after 2min of inactivity
             threading._start_new_thread(self.Listen, (client, ip))
 
