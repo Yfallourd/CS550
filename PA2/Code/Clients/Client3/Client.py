@@ -4,7 +4,7 @@ import datetime
 import sys
 import time
 from multiprocessing import Process
-from os import walk, path
+from os import walk, path, listdir, remove
 import random
 
 
@@ -12,17 +12,32 @@ class Client:
     def __init__(self):
         print("Client initialized")
 
-    def testAverageReqTime(self, servers, N):
+    def testAverageReqTime(self, servers, N, test, port):
         start = datetime.datetime.now()
-        for i in range(N):
-            #sock = self.socketConnect(ip, int(self.selectServer(servers)))
-            filename = "c"+str(i % 8)+"-1"
-            self.decentralizedLookup(filename, servers)
-        end = datetime.datetime.now()
+        end = start
+        if test == "lookup":
+            for i in range(N):
+                filename = "c"+str(i % 8)+"-1"
+                self.decentralizedLookup(filename, servers)
+            end = datetime.datetime.now()
+        elif test == "register":
+            for i in  range(N):
+                self.registerAllFiles(servers, port)
+            end = datetime.datetime.now()
+        elif test == "get":
+            for i in range(N):
+                target = random.choice([12341,12342,12343,12344,12345,12346,12347,12348])
+                filename = "c"+list(str(target))[4]+"-"+random.choice(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
+                sock = client.socketConnect("127.0.1.1", target)
+                if sock:
+                    self.getFile(filename, sock)
+                sock.shutdown(socket.SHUT_WR)
+
+            end = datetime.datetime.now()
         delta = end - start
         return (delta.total_seconds())/N
 
-    def testMulti(self, servers, N):
+    def testMulti(self, servers, N, test, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.1.1", 12301))  # Defines peer's port for test
@@ -31,8 +46,8 @@ class Client:
         client, clientip = sock.accept()
         time.sleep(0.5)
         print("Signal received, starting test\n")
-        threading._start_new_thread(self.testAverageReqTime, (servers, N))
-        #result = self.testAverageReqTime(servers, N)
+        #threading._start_new_thread(self.testAverageReqTime, (servers, N, test, port))
+        result = self.testAverageReqTime(servers, N, test, port)
         print("\n[The average request took " + str(result) + " seconds]\n")
 
     def selectServer(self, servers):
@@ -47,6 +62,18 @@ class Client:
             return so
         except:
             print("Couldn't connect to " + str(ip))
+
+    def registerAllFiles(self, servers, port):
+        files = client.findAllFiles()
+        indexport = client.selectServer(servers)
+        sock = client.socketConnect(indexip, int(indexport))
+        if sock:
+            for f in files:
+                f.replace(" ", "")
+                client.register(f, sock, port)
+                print(sock.recv(4096).decode())
+                sock = client.socketConnect(indexip, int(indexport))
+            sock.shutdown(socket.SHUT_WR)
 
     def register(self, filename, sock, port):
         sock.send(("register " + filename + " " + str(port)).encode())
@@ -137,7 +164,9 @@ class Server:
 
 
 if __name__ == "__main__":
-
+    for filename in listdir("."):
+        if "_" in filename:
+            remove(filename)
     cfg = open("../../Indexcfg", "r")
     servers = cfg.read().strip().split("|")
     cfg.close()
@@ -157,7 +186,6 @@ if __name__ == "__main__":
             "or let the program run for the server to listen\n")
         if userinput == "get":
             userinput = input("Filename ?\n")
-            # ip = input("File host IP ?\n")
             ip = "127.0.1.1"
             port = input("File host port ?\n")
             sock = client.socketConnect(ip, int(port))
@@ -166,16 +194,7 @@ if __name__ == "__main__":
                 print(sock.recv(4096).decode())
                 sock.shutdown(socket.SHUT_WR)
         elif userinput == 'register':
-            files = client.findAllFiles()
-            indexport = client.selectServer(servers)
-            sock = client.socketConnect(indexip, int(indexport))
-            if sock:
-                for f in files:
-                    f.replace(" ", "")
-                    client.register(f, sock, server.port)
-                    print(sock.recv(4096).decode())
-                    sock = client.socketConnect(indexip, int(indexport))
-                sock.shutdown(socket.SHUT_WR)
+            client.registerAllFiles(servers, server.port)
         elif userinput == 'lookup':
             filename = input("Filename ?\n").replace(" ", "")
             client.decentralizedLookup(filename, servers)
@@ -188,11 +207,15 @@ if __name__ == "__main__":
             N = input("How many requests ?\n")
             response = input("Multithreading test ? (y/n)\n")
             if response == "n":
-                print("Beginning of test :\n")
-                result = client.testAverageReqTime(servers, int(N))
-                print("[The average request took " + str(result) + " seconds]")
+                userinput = input("Test which command ? lookup/register/get\n")
+                if (userinput == "lookup")|(userinput == "get")|(userinput == "register"):
+                    print("Beginning of test :\n")
+                    result = client.testAverageReqTime(servers, int(N), userinput, server.port)
+                    print("[The average request took " + str(result) + " seconds]")
             if response == "y":
-                client.testMulti(servers, int(N))  # Gotta change that shit
+                userinput = input("Test which command ? lookup/register/get\n")
+                if (userinput == "lookup")|(userinput == "get")|(userinput == "register"):
+                    client.testMulti(servers, int(N), userinput, server.port)
 
         else:
             print("Incorrect command.\n")
